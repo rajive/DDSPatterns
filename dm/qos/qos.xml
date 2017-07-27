@@ -1,0 +1,163 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/5.2.3/rti_dds_qos_profiles.xsd"
+	version="5.2.3">
+
+	<qos_library name="MyParticipantQosLibrary">
+		<qos_profile name="FastLossDetectionProfile" 
+					 base_name="BuiltinQosLib::Generic.Common">
+			<participant_qos>
+				<transport_builtin>
+	                <!-- use only UDPv4 (disable shared memory) -->
+	                <mask>UDPV4</mask>
+	            </transport_builtin>
+				<discovery_config>
+					<participant_liveliness_assert_period>
+						<sec>1</sec>
+						<nanosec>0</nanosec>
+					</participant_liveliness_assert_period>
+					<participant_liveliness_lease_duration>
+						<sec>3</sec>
+						<nanosec>0</nanosec>
+					</participant_liveliness_lease_duration>
+					<max_liveliness_loss_detection_period>
+						<sec>1</sec>
+						<nanosec>0</nanosec>
+					</max_liveliness_loss_detection_period>
+				</discovery_config>
+			</participant_qos>
+		</qos_profile>
+
+		<qos_profile name="SelectedProfile" 
+					 base_name="FastLossDetectionProfile"/>
+
+	</qos_library>
+
+	<qos_library name="MyEndpointQosLibrary">
+
+ 	   	<!-- QoS Policies for keyed 'state' data
+ 	   		1. Allow writers to dispose() an instance before a write()
+ 	   		2. Allow instances (samples) on a reader to transition between 
+ 	   				NOT_ALIVE_DISPOSED <==> NOT_ALIVE_NO_WRITERS 
+ 	   		   states, without being in the ALIVE state
+ 	   		3. Ensure that unregistered and disposed instance space is 
+ 	   		   reclaimed once all the associated samples are processed.
+ 	   		4. Disable magical settings, and let only the application(s) be 
+ 	   		   responsible for explicitly disposing instances.
+ 	   		5. Upon hitting instance resource limits, force applications to 
+ 	   		   decide whether to dispose() or unregister() or do something else
+       	-->
+        <qos_profile name="Pattern.State" 
+        		     base_name="BuiltinQosLibExp::Pattern.Status">
+                    	    		        
+            <!-- QoS used to configure a data writer -->             
+            <datawriter_qos>
+                        	
+                <writer_data_lifecycle>
+                
+	               	<!-- No magic: require explicit dispose() -->
+	               	<autodispose_unregistered_instances>
+	               	    false 
+	               	</autodispose_unregistered_instances> 
+	               	 
+	                <!-- don't keep disposed instances for late joiners -->
+	               	<autopurge_disposed_instances_delay>
+	               	    <sec>0</sec>
+	               		<nanosec>0</nanosec>
+	               	</autopurge_disposed_instances_delay>
+	               	
+	                <!-- don't keep unregistered instances for late joiners -->
+	               	<autopurge_unregistered_instances_delay>
+	               	    <sec>0</sec>
+	               		<nanosec>0</nanosec>
+	               	</autopurge_unregistered_instances_delay>
+                	
+                </writer_data_lifecycle>
+                
+                <protocol>
+                
+                	<!-- allow dispose() of an unwritten instance -->
+                	<serialize_key_with_dispose>
+                		true 
+                	</serialize_key_with_dispose>
+                	
+                </protocol>
+                
+                <writer_resource_limits>
+                
+                	<!-- NOTE: applicable upon reaching max_intances limit -->
+                	
+                	<instance_replacement>
+                		<!-- 
+                		No magic:
+                		  - app should explicitly unregister() or dispose() 
+                	      - unregistered instances are always replaced first 
+                	      	whenever feasible, and then this policy applies
+                		 -->
+                		DISPOSED_INSTANCE_REPLACEMENT <!-- can forget those -->
+                	</instance_replacement>
+                	
+                	<replace_empty_instances>
+                		false <!-- rely on instance_replacement policy -->
+                	</replace_empty_instances>
+                	
+                </writer_resource_limits>
+                
+            </datawriter_qos>
+
+            
+            <!-- QoS used to configure a data reader -->                
+            <datareader_qos>
+            
+            	<reader_data_lifecycle>
+            	
+            		<!-- forget the instance immediately after the app has 
+            		     'taken' all the samples (including disposed) -->
+            		<autopurge_disposed_instances_delay>
+                	    <sec>0</sec>
+                		<nanosec>0</nanosec>
+            		</autopurge_disposed_instances_delay>
+            		
+            	</reader_data_lifecycle>
+            	
+				<protocol>
+				
+					<!-- allow NOT_ALIVE_NO_WRITERS => NOT_ALIVE_DISPOSED -->
+					<propagate_dispose_of_unregistered_instances>
+						true 
+					</propagate_dispose_of_unregistered_instances>
+					
+					<!-- allow NOT_ALIVE_DISPOSED => NOT_ALIVE_NO_WRITERS -->
+					<propagate_unregister_of_disposed_instances>
+						true 
+					</propagate_unregister_of_disposed_instances>
+					
+				</protocol>
+
+            </datareader_qos>            
+            
+        </qos_profile>
+
+
+		<qos_profile name="SharedState" base_name="Pattern.State"/>
+		
+		
+		<qos_profile name="ExclusiveState" base_name="SharedState">
+			<datareader_qos>
+				<ownership>
+					<kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
+				</ownership>
+			</datareader_qos>
+			<datawriter_qos>
+				<ownership>
+					<kind>EXCLUSIVE_OWNERSHIP_QOS</kind>
+				</ownership>
+			</datawriter_qos>
+		</qos_profile>
+			
+		<qos_profile name="Command" 
+					 base_name="BuiltinQosLibExp::Generic.KeepLastReliable"/>
+					 
+		<qos_profile name="SelectedProfile" base_name="ExclusiveState"/>
+	</qos_library>
+</dds>

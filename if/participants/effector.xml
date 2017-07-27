@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE dds [
+<!-- QoS Profiles -->
+<!ENTITY qos SYSTEM "qos.xml.fragment">
+<!-- Domains -->
+<!ENTITY domains SYSTEM "domains.xml.fragment">
+]>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/5.2.3/rti_dds_profiles.xsd"
+	version="5.2.3">
+
+	<!-- Include ENTITY definitions &qos; &domains; -->
+
+	<participant_library name="MyParticipantLibrary">
+
+		<domain_participant name="Effector"
+			domain_ref="MyDomainLibrary::ShapeDomain">
+
+			<subscriber name="Subscriber">
+				<data_reader name="ProposedRequestReader" topic_ref="Square">
+					<datareader_qos base_name="MyEndpointQosLibrary::ExclusiveState">
+				       <destination_order>
+				          <kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+				        </destination_order>					
+					</datareader_qos>
+				</data_reader>
+				<data_reader name="CurrentStateReader" topic_ref="Triangle">
+					<datareader_qos base_name="MyEndpointQosLibrary::ExclusiveState"/>
+				</data_reader>
+				<subscriber_qos base_name="MyEndpointQosLibrary::SelectedProfile"/>
+			</subscriber>
+
+			<publisher name="Publisher">
+				<data_writer name="AcceptedRequestWriter" topic_ref="Circle">
+					<datawriter_qos base_name="MyEndpointQosLibrary::SharedState"/>
+				</data_writer>
+				<data_writer name="CurrentStateWriter" topic_ref="Triangle">
+					<datawriter_qos base_name="MyEndpointQosLibrary::ExclusiveState"/>
+				</data_writer>
+			</publisher>
+
+			<participant_qos base_name="MyParticipantQosLibrary::SelectedProfile">
+				<property>
+					<value>
+						<element>
+							<name>lua.onData<!-- option: -luaOnData --></name>
+							<value>FALSE</value>
+						</element>
+						<element>
+					        <name>lua.onPeriod<!-- option: -luaOnPeriod --></name>
+                            <value>TRUE</value>
+                        </element>
+					</value>
+				</property>
+			</participant_qos>
+		</domain_participant>
+	</participant_library>
+</dds>
